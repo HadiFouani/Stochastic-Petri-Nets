@@ -181,7 +181,7 @@ def build_cxr_txa_net() -> PetriNet:
 
     return net
 
-def initial_marking_xaxa(net: PetriNet) -> Marking:
+def initial_marking(net: PetriNet) -> Marking:
     return net.marking_from_dict(
         {
             "x1": 0,
