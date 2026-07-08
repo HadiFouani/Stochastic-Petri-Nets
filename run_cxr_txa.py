@@ -1,7 +1,7 @@
 from spn.simulator import Simulator
 from spn.plotting import plot_result
 from spn.models.cxr_txa import build_cxr_txa_net, initial_marking
-
+from spn.visualizer import PetriNetVisualizer
 
 if __name__ == "__main__":
     net = build_cxr_txa_net()
@@ -32,3 +32,7 @@ if __name__ == "__main__":
     print(result.fired_transitions[-20:])
 
     plot_result(net, result)
+    
+    final_marking = result.markings[-1]
+    viz = PetriNetVisualizer(net)
+    viz.draw(final_marking)
