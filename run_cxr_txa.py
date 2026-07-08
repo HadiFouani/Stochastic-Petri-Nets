@@ -7,12 +7,12 @@ if __name__ == "__main__":
     net = build_cxr_txa_net()
     m0 = initial_marking(net)
 
-    simulator = Simulator(net,seed=42)
+    simulator = Simulator(net,seed=8)
 
     result = simulator.run(
         initial_marking=m0,
-        t_max=100.0,
-        max_steps=100000,
+        t_max=300.0,
+        max_steps=500000,
         record_every_step=True,
     )
 
