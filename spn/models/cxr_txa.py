@@ -2,21 +2,21 @@ from ..core import PetriNet, Marking
 
 import numpy as np
 
-p21 = 200.0   # Xist scaling
-p22 = 500.0   # cXR scaling
-p23 = 400.0   # tXA scaling
+p21 = 347.0   # Xist scaling
+p22 = 76.0   # cXR scaling
+p23 = 79.0   # tXA scaling
 
-p3 = 3.0      # Xist --| tXA Hill coefficient
-p4 = 0.3     # Xist --| tXA threshold
+p3 = 3.4      # Xist --| tXA Hill coefficient
+p4 = 0.017     # Xist --| tXA threshold
 
-p5 = 3.0      # Xist --| cXR Hill coefficient
-p6 = 0.3     # Xist --| cXR threshold
+p5 = 2.2      # Xist --| cXR Hill coefficient
+p6 = 0.019     # Xist --| cXR threshold
 
-p11 = 3.0     # tXA -> Xist Hill coefficient
-p12 = 0.40   # tXA -> Xist threshold
+p11 = 2.7     # tXA -> Xist Hill coefficient
+p12 = 1.03   # tXA -> Xist threshold
 
-p13 = 3.0     # cXR --| Xist Hill coefficient
-p14 = 0.55    # cXR --| Xist threshold
+p13 = 2.6     # cXR --| Xist Hill coefficient
+p14 = 0.20    # cXR --| Xist threshold
 
 XIST_DEGRADATION = 0.1733
 
@@ -75,10 +75,10 @@ def build_cxr_txa_net() -> PetriNet:
         name="t1_x1_prod",
         pre={"!x1": 1, "txa1": 1, "txa2": 1, "!cxr1": 1},
         post={"x1": 1, "txa1": 1, "txa2": 1, "!cxr1": 1},
-        guard_fn=lambda m: (
-            m[CXR1] < p22 * p14 and
-            m[TXA1] + m[TXA2] > 2 * p23 * p12
-        ),
+        # guard_fn=lambda m: (
+        #     m[CXR1] < p22 * p14 and
+        #     m[TXA1] + m[TXA2] > 2 * p23 * p12
+        # ),
         propensity_fn=lambda m: p21 * f_cxr(m[CXR1]) * f_txa(m[TXA1], m[TXA2]),
     )
 
@@ -95,7 +95,7 @@ def build_cxr_txa_net() -> PetriNet:
         name="t3_txa1_prod",
         pre={"!x1": 1, "!txa1": 1},
         post={"!x1": 1, "txa1": 1},
-        guard_fn=lambda m: m[X1] < p21 * p4,
+        # guard_fn=lambda m: m[X1] < p21 * p4,
         propensity_fn=lambda m: p23 * g_txa(m[X1]),
     )
 
@@ -112,7 +112,7 @@ def build_cxr_txa_net() -> PetriNet:
         name="t5_cxr1_prod",
         pre={"!x1": 1, "!cxr1": 1},
         post={"!x1": 1, "cxr1": 1},
-        guard_fn=lambda m: m[X1] < p21 * p6,
+        # guard_fn=lambda m: m[X1] < p21 * p6,
         propensity_fn=lambda m: p22 * g_cxr(m[X1]),
     )
 
@@ -129,10 +129,10 @@ def build_cxr_txa_net() -> PetriNet:
         name="t7_x2_prod",
         pre={"!x2": 1, "txa1": 1, "txa2": 1, "!cxr2": 1},
         post={"x2": 1, "txa1": 1, "txa2": 1, "!cxr2": 1},
-        guard_fn=lambda m: (
-            m[CXR2] < p22 * p14 and
-            m[TXA1] + m[TXA2] > 2 * p23 * p12
-        ),
+        # guard_fn=lambda m: (
+        #     m[CXR2] < p22 * p14 and
+        #     m[TXA1] + m[TXA2] > 2 * p23 * p12
+        # ),
         propensity_fn=lambda m: p21 * f_cxr(m[CXR2]) * f_txa(m[TXA1], m[TXA2]),
     )
 
@@ -149,7 +149,7 @@ def build_cxr_txa_net() -> PetriNet:
         name="t9_txa2_prod",
         pre={"!x2": 1, "!txa2": 1},
         post={"!x2": 1, "txa2": 1},
-        guard_fn=lambda m: m[X2] < p21 * p4,
+        # guard_fn=lambda m: m[X2] < p21 * p4,
         propensity_fn=lambda m: p23 * g_txa(m[X2]),
     )
 
@@ -166,7 +166,7 @@ def build_cxr_txa_net() -> PetriNet:
         name="t11_cxr2_prod",
         pre={"!x2": 1, "!cxr2": 1},
         post={"!x2": 1, "cxr2": 1},
-        guard_fn=lambda m: m[X2] < p21 * p6,
+        # guard_fn=lambda m: m[X2] < p21 * p6,
         propensity_fn=lambda m: p22 * g_cxr(m[X2]),
     )
 
@@ -184,18 +184,18 @@ def initial_marking(net: PetriNet) -> Marking:
     return net.marking_from_dict(
         {
             "x1": 0,
-            "!x1": 500,
+            "!x1": 347,
             "x2": 0,
-            "!x2": 500,
+            "!x2": 347,
 
-            "txa1": 250,
+            "txa1": 79,
             "!txa1": 0,
-            "txa2": 250,
+            "txa2": 79,
             "!txa2": 0,
 
-            "cxr1": 250,
+            "cxr1": 76,
             "!cxr1": 0,
-            "cxr2": 250,
+            "cxr2": 76,
             "!cxr2": 0,
         }
     )
