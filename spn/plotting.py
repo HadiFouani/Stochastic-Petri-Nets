@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 
 from .core import PetriNet
+from .models.cxr_txa import N
 from .result import SimulationResult
 
 def plot_result(net: PetriNet, result: SimulationResult) -> None:
@@ -10,14 +11,14 @@ def plot_result(net: PetriNet, result: SimulationResult) -> None:
         return names.index(place)
 
     times = result.times
-    M = result.markings
+    M = result.markings / N
 
     plt.figure(figsize=(10, 5))
     plt.step(times, M[:, col("x1")], where="post", label="x1")
     plt.step(times, M[:, col("x2")], where="post", label="x2")
     plt.xlabel("time (h)")
-    plt.ylabel("molecule count")
-    plt.title("Xist dynamics")
+    plt.ylabel("normalized level (count / N)")
+    plt.title("Normalized Xist dynamics")
     plt.legend()
     plt.tight_layout()
     plt.show()
@@ -28,8 +29,8 @@ def plot_result(net: PetriNet, result: SimulationResult) -> None:
     plt.step(times, M[:, col("cxr1")], where="post", label="cxr1")
     plt.step(times, M[:, col("cxr2")], where="post", label="cxr2")
     plt.xlabel("time (h)")
-    plt.ylabel("molecule count")
-    plt.title("Regulator dynamics")
+    plt.ylabel("normalized level (count / N)")
+    plt.title("Normalized regulator dynamics")
     plt.legend()
     plt.tight_layout()
     plt.show()

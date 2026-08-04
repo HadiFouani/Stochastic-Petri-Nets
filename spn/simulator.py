@@ -44,6 +44,7 @@ class Simulator:
         t_max: float,
         max_steps: int = 100_000,
         record_every_step: bool = True,
+        show_current_transition: bool = False,
     ) -> SimulationResult:
         time = 0.0
         marking = initial_marking.copy()
@@ -52,7 +53,7 @@ class Simulator:
         markings = [marking.copy()]
         fired = []
 
-        for _ in range(max_steps):
+        for step in range(max_steps):
             propensities = self.compute_propensities(marking)
             total = float(np.sum(propensities))
 
@@ -70,11 +71,23 @@ class Simulator:
             time += tau
             self.fire(marking, transition_id)
 
-            fired.append(self.net.transitions[transition_id].name)
+            transition_name = self.net.transitions[transition_id].name
+            fired.append(transition_name)
+
+            if show_current_transition:
+                print(
+                    f"\rStep {step + 1} | time {time:.6f} | "
+                    f"transition: {transition_name:<30}",
+                    end="",
+                    flush=True,
+                )
 
             if record_every_step:
                 times.append(time)
                 markings.append(marking.copy())
+
+        if show_current_transition:
+            print()
 
         return SimulationResult(
             times=np.array(times),

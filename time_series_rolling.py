@@ -11,15 +11,15 @@ from spn.visualizer import PetriNetVisualizer
 # Configuration
 # ============================================================
 
-SEED = 8
-T_MAX = 300.0
+SEED = 7
+T_MAX = 400.0
 MAX_STEPS = 500_000
 
 # Resample the irregular Gillespie trajectory every 0.1 h
 TIME_STEP = 0.1
 
 # Rolling statistics over a 10-hour window
-ROLLING_WINDOW_HOURS = 100.0
+ROLLING_WINDOW_HOURS = 299.0
 
 # Ignore the transient before computing final statistics
 BURN_IN_TIME = 100.0
@@ -294,14 +294,14 @@ def plot_raw_and_rolling_mean(
         dataframe["time"],
         dataframe["x1_mean"],
         linewidth=2.5,
-        label=f"x1 rolling mean ({rolling_window_hours:g} h)",
+        label=f"x1 rolling mean ",
     )
 
     plt.plot(
         dataframe["time"],
         dataframe["x2_mean"],
         linewidth=2.5,
-        label=f"x2 rolling mean ({rolling_window_hours:g} h)",
+        label=f"x2 rolling mean ",
     )
 
     plt.axvline(

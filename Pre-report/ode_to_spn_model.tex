@@ -1,0 +1,450 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{booktabs,longtable,array}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{microtype}
+
+\geometry{margin=2.5cm}
+\hypersetup{colorlinks=true,linkcolor=blue!55!black,citecolor=blue!55!black,
+  urlcolor=blue!55!black}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em}
+
+\newcommand{\Xist}{\mathrm{Xist}}
+\newcommand{\txa}{\mathrm{tXA}}
+\newcommand{\cxr}{\mathrm{cXR}}
+\newcommand{\Pre}{\mathrm{Pre}}
+\newcommand{\Post}{\mathrm{Post}}
+\newcommand{\ind}{\mathbf{1}}
+
+\title{Translation of the M\"utzel cXR--tXA Model\\
+from Ordinary Differential Equations to a Stochastic Petri Net}
+\author{Hadi Fouani\\MPRI M2 -- INRIA MUSCA}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This note gives a complete translation of the two-allele cXR--tXA model of
+M\"utzel et al.\ from its ordinary differential equation (ODE) formulation to
+the stochastic Petri net (SPN) implemented in this project.  The notation
+$x_i$, $\txa_i$, $\cxr_i$, and $p_3,\ldots,p_{23}$ follows the paper.  We
+explain how each positive or negative ODE term becomes a transition, how
+activators and inhibitors determine the choice of input places, how
+complementary places impose finite molecular capacities, and how transition
+propensities preserve the kinetic functions of the ODE.  The current
+implementation splits the production of each $x_i$ into two transitions, one
+attributed to each trans-acting activator, without changing their total rate.
+\end{abstract}
+
+\tableofcontents
+
+\section{Biological and mathematical model}
+
+Random X-chromosome inactivation requires a cell with two initially active X
+chromosomes to reach a state in which one allele expresses high Xist and the
+other remains low.  M\"utzel et al.\ classify X-linked regulators by whether
+they activate or repress Xist and whether they act in cis or in trans
+\cite{mutzel2019}.  The minimal model considered here contains, for each
+chromosome $i\in\{1,2\}$,
+\begin{itemize}
+  \item $x_i$: the level of Xist produced from chromosome $i$;
+  \item $\cxr_i$: a cis-acting Xist repressor that affects only allele $i$;
+  \item $\txa_i$: the contribution of chromosome $i$ to a trans-acting Xist
+        activator shared by both alleles.
+\end{itemize}
+
+The regulatory signs are
+\[
+  \txa_1+\txa_2 \longrightarrow x_i,
+  \qquad
+  \cxr_i \dashv x_i,
+  \qquad
+  x_i \dashv \txa_i,
+  \qquad
+  x_i \dashv \cxr_i.
+\]
+Thus the tXA pool activates both Xist alleles, whereas cXR represses Xist in
+cis.  Once Xist rises on one chromosome, it represses the production of both
+local regulators.  The loss of tXA contributes a trans feedback between the
+two chromosomes; the loss of cXR creates a positive cis feedback on the same
+chromosome.
+
+\section{ODE formulation in the notation of M\"utzel et al.}
+
+For $i\in\{1,2\}$, the stochastic-scale equations reported for the cXR--tXA
+model are \cite{mutzel2019supp}
+\begin{align}
+  \frac{dx_i}{dt}
+    &=p_{21}f(\cxr_i)f(\txa)-0.1733x_i, \label{eq:xist}\
+  \frac{d\txa_i}{dt}
+    &=p_{23}\left(1-
+      \frac{x_i^{p_3}}{x_i^{p_3}+(p_{21}p_4)^{p_3}}\right)-\txa_i,
+      \label{eq:txa}\
+  \frac{d\cxr_i}{dt}
+    &=p_{22}\left(1-
+      \frac{x_i^{p_5}}{x_i^{p_5}+(p_{21}p_6)^{p_5}}\right)-\cxr_i.
+      \label{eq:cxr}
+\end{align}
+The regulatory functions in the Xist equation are
+\begin{align}
+ f(\cxr_i)
+   &=1-\frac{\cxr_i^{p_{13}}}
+      {\cxr_i^{p_{13}}+(p_{22}p_{14})^{p_{13}}}, \label{eq:fcxr}\\
+ f(\txa)
+   &=\frac{\left[\tfrac12(\txa_1+\txa_2)\right]^{p_{11}}}
+      {\left[\tfrac12(\txa_1+\txa_2)\right]^{p_{11}}
+       +(p_{23}p_{12})^{p_{11}}}. \label{eq:ftxa}
+\end{align}
+
+Every right-hand side has the form
+\[
+  \frac{dy}{dt}=P_y(\boldsymbol{x})-D_y(\boldsymbol{x}),
+\]
+where $P_y\geq0$ is production and $D_y\geq0$ is degradation.  This
+nonnegative decomposition is the key to the SPN translation: production and
+degradation are represented by distinct stochastic events.
+
+The parameters used by the implementation are
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Parameter & Value & Role \\
+\midrule
+$p_{21}$ & $347$ & Xist molecular scale / maximal production rate \\
+$p_{22}$ & $76$  & cXR molecular scale / maximal production rate \\
+$p_{23}$ & $79$  & tXA molecular scale / maximal production rate \\
+$p_3$    & $3.4$ & Hill exponent for $x_i\dashv\txa_i$ \\
+$p_4$    & $0.017$ & normalized threshold for $x_i\dashv\txa_i$ \\
+$p_5$    & $2.2$ & Hill exponent for $x_i\dashv\cxr_i$ \\
+$p_6$    & $0.019$ & normalized threshold for $x_i\dashv\cxr_i$ \\
+$p_{11}$ & $2.7$ & Hill exponent for $\txa\rightarrow x_i$ \\
+$p_{12}$ & $1.03$ & normalized threshold for $\txa\rightarrow x_i$ \\
+$p_{13}$ & $2.6$ & Hill exponent for $\cxr_i\dashv x_i$ \\
+$p_{14}$ & $0.20$ & normalized threshold for $\cxr_i\dashv x_i$ \\
+$\delta_x$ & $0.1733\,\mathrm{h}^{-1}$ & Xist degradation constant \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Discrete places and complementary places}
+
+Let $M(p)$ denote the marking of place $p$.  Each biological variable is
+represented by a positive place and a complementary place:
+\[
+\begin{array}{lll}
+ x_i, & \overline{x}_i, & M(x_i)+M(\overline{x}_i)=p_{21},\\
+ \txa_i, & \overline{\txa}_i, &
+ M(\txa_i)+M(\overline{\txa}_i)=p_{23},\\
+ \cxr_i, & \overline{\cxr}_i, &
+ M(\cxr_i)+M(\overline{\cxr}_i)=p_{22}.
+\end{array}
+\]
+The source code writes the complementary names as \texttt{!x1},
+\texttt{!txa1}, and \texttt{!cxr1}, while this document uses an overline.
+One production firing transfers one token from $\overline y$ to $y$; one
+degradation firing transfers one token from $y$ to $\overline y$.  Therefore
+the capacity identity is invariant.
+
+The initial marking is
+\[
+\begin{array}{c|cccccc}
+ &x_1&x_2&\txa_1&\txa_2&\cxr_1&\cxr_2\\ \hline
+M_0&0&0&79&79&76&76
+\end{array}
+\]
+with each complementary marking determined by its conservation equation.
+
+\section{Translation rule: state change versus regulation}
+
+An SPN is written
+\[
+  \mathcal N=(P,T,\Pre,\Post,M_0,a),
+\]
+where $P$ is the place set, $T$ the transition set, and
+$a_t(M)$ the marking-dependent propensity of transition $t$.  Transition $t$
+is structurally enabled when
+\[
+  M(p)\geq \Pre(p,t)\qquad\text{for every }p\in P,
+\]
+and firing it produces
+\[
+  M'=M+C(:,t),\qquad C=\Post-\Pre.
+\]
+
+Two different roles must be kept separate.
+
+\paragraph{The variable that changes.}
+For production of $y$, put $\overline y$ in the pre-set and $y$ in the
+post-set.  For degradation, reverse these arcs.  These are the only arcs that
+change the marking.
+
+\paragraph{A regulator that is observed but not changed.}
+The implementation represents regulatory dependence by a self-loop: the same
+place occurs in both $\Pre$ and $\Post$.  Its incidence is zero, so firing does
+not alter the regulator.  Such a self-loop also imposes the structural test
+$M(p)\geq1$.
+
+The sign of the interaction determines which place is used:
+\begin{itemize}
+  \item for an \emph{activator} $A\rightarrow y$, use the positive place $A$
+        in the self-loop; the kinetic factor is an increasing Hill function;
+  \item for an \emph{inhibitor} $R\dashv y$, use the complementary place
+        $\overline R$ in the self-loop; the kinetic factor is a decreasing Hill
+        function evaluated from the positive marking $M(R)$.
+\end{itemize}
+This convention makes the graph display the regulatory sign.  The propensity,
+not the self-loop alone, retains the quantitative Hill response.  In
+particular, a self-loop is a stricter condition than a purely functional read
+arc because it requires at least one token in its input place.
+
+\section{Transition propensities}
+
+Write $m_y=M(y)$ and define
+\begin{align*}
+ F_{\cxr}(m)&=1-\frac{m^{p_{13}}}
+  {m^{p_{13}}+(p_{22}p_{14})^{p_{13}}},\\
+ F_{\txa}(m_1,m_2)&=
+ \frac{[\tfrac12(m_1+m_2)]^{p_{11}}}
+ {[\tfrac12(m_1+m_2)]^{p_{11}}+(p_{23}p_{12})^{p_{11}}},\\
+ G_{\txa}(m)&=1-\frac{m^{p_3}}
+  {m^{p_3}+(p_{21}p_4)^{p_3}},\\
+ G_{\cxr}(m)&=1-\frac{m^{p_5}}
+  {m^{p_5}+(p_{21}p_6)^{p_5}}.
+\end{align*}
+
+The unsplit Xist production rate inherited from Eq.~\eqref{eq:xist} is
+\[
+ A_i(M)=p_{21}F_{\cxr}(m_{\cxr_i})
+                 F_{\txa}(m_{\txa_1},m_{\txa_2}).
+\]
+To show explicitly which member of the shared tXA pool contributes to an
+event, the implementation replaces this single transition by two transitions:
+\[
+ a_{j,i}^{x,+}(M)=
+ \begin{cases}
+ \displaystyle
+ \frac{m_{\txa_j}}{m_{\txa_1}+m_{\txa_2}}A_i(M),
+ &m_{\txa_1}+m_{\txa_2}>0,\\[6pt]
+ 0,&m_{\txa_1}+m_{\txa_2}=0,
+ \end{cases}
+ \qquad j\in\{1,2\}.
+\]
+This split preserves the original kinetics exactly:
+\[
+ a_{1,i}^{x,+}(M)+a_{2,i}^{x,+}(M)=A_i(M)
+ \quad\text{when }m_{\txa_1}+m_{\txa_2}>0.
+\]
+It is a bookkeeping decomposition, not a new regulatory assumption.  The
+fraction selects the relative contribution of $\txa_j$; the Hill factor still
+depends on the total trans-acting pool, as in M\"utzel et al.
+
+The remaining propensities are direct translations of
+Eqs.~\eqref{eq:xist}--\eqref{eq:cxr}:
+\begin{align*}
+ a_i^{x,-}(M)&=0.1733m_{x_i},\\
+ a_i^{\txa,+}(M)&=p_{23}G_{\txa}(m_{x_i}),&
+ a_i^{\txa,-}(M)&=m_{\txa_i},\\
+ a_i^{\cxr,+}(M)&=p_{22}G_{\cxr}(m_{x_i}),&
+ a_i^{\cxr,-}(M)&=m_{\cxr_i}.
+\end{align*}
+
+\section{Complete transition definition}
+
+Table~\ref{tab:transitions} defines all 14 transitions.  A plus sign denotes
+production and a minus sign degradation.  Entries listed on both sides are
+self-loops and therefore have zero net incidence.
+
+\renewcommand{\arraystretch}{1.18}
+\begin{longtable}{@{}p{2.3cm}p{3.4cm}p{3.4cm}p{4.6cm}@{}}
+\caption{Pre-set, post-set, and propensity of every transition.}
+\label{tab:transitions}\\
+\toprule
+Transition & Pre-set & Post-set & Propensity \\
+\midrule
+\endfirsthead
+\toprule
+Transition & Pre-set & Post-set & Propensity \\
+\midrule
+\endhead
+$t^{x,+}_{1,1}$ & $\overline{x}_1,\txa_1,\overline{\cxr}_1$
+ & $x_1,\txa_1,\overline{\cxr}_1$ & $a^{x,+}_{1,1}(M)$ \\
+$t^{x,+}_{2,1}$ & $\overline{x}_1,\txa_2,\overline{\cxr}_1$
+ & $x_1,\txa_2,\overline{\cxr}_1$ & $a^{x,+}_{2,1}(M)$ \\
+$t^{x,-}_{1}$ & $x_1$ & $\overline{x}_1$ & $0.1733m_{x_1}$ \\
+$t^{\txa,+}_{1}$ & $\overline{x}_1,\overline{\txa}_1$
+ & $\overline{x}_1,\txa_1$ & $p_{23}G_{\txa}(m_{x_1})$ \\
+$t^{\txa,-}_{1}$ & $\txa_1$ & $\overline{\txa}_1$ & $m_{\txa_1}$ \\
+$t^{\cxr,+}_{1}$ & $\overline{x}_1,\overline{\cxr}_1$
+ & $\overline{x}_1,\cxr_1$ & $p_{22}G_{\cxr}(m_{x_1})$ \\
+$t^{\cxr,-}_{1}$ & $\cxr_1$ & $\overline{\cxr}_1$ & $m_{\cxr_1}$ \\
+\midrule
+$t^{x,+}_{1,2}$ & $\overline{x}_2,\txa_1,\overline{\cxr}_2$
+ & $x_2,\txa_1,\overline{\cxr}_2$ & $a^{x,+}_{1,2}(M)$ \\
+$t^{x,+}_{2,2}$ & $\overline{x}_2,\txa_2,\overline{\cxr}_2$
+ & $x_2,\txa_2,\overline{\cxr}_2$ & $a^{x,+}_{2,2}(M)$ \\
+$t^{x,-}_{2}$ & $x_2$ & $\overline{x}_2$ & $0.1733m_{x_2}$ \\
+$t^{\txa,+}_{2}$ & $\overline{x}_2,\overline{\txa}_2$
+ & $\overline{x}_2,\txa_2$ & $p_{23}G_{\txa}(m_{x_2})$ \\
+$t^{\txa,-}_{2}$ & $\txa_2$ & $\overline{\txa}_2$ & $m_{\txa_2}$ \\
+$t^{\cxr,+}_{2}$ & $\overline{x}_2,\overline{\cxr}_2$
+ & $\overline{x}_2,\cxr_2$ & $p_{22}G_{\cxr}(m_{x_2})$ \\
+$t^{\cxr,-}_{2}$ & $\cxr_2$ & $\overline{\cxr}_2$ & $m_{\cxr_2}$ \\
+\bottomrule
+\end{longtable}
+
+In the Python implementation, these four split transitions are named
+\texttt{t\_prod\_1\_x1}, \texttt{t\_prod\_2\_x1},
+\texttt{t\_prod\_1\_x2}, and \texttt{t\_prod\_2\_x2}.  The mathematical
+subscripts above identify first the tXA source $j$ and then the target Xist
+allele $i$.
+
+\section{Pre, Post, and incidence columns}
+
+For a unit-weight transition, the matrix entries follow immediately from the
+table.  For example, under the local place order
+\[
+ (x_1,\overline{x}_1,\txa_1,\overline{\txa}_1,
+  \txa_2,\overline{\txa}_2,\cxr_1,\overline{\cxr}_1),
+\]
+the transition $t^{x,+}_{1,1}$ has
+\[
+ \Pre(:,t^{x,+}_{1,1})=
+ \begin{pmatrix}0\\1\\1\\0\\0\\0\\0\\1\end{pmatrix},
+ \qquad
+ \Post(:,t^{x,+}_{1,1})=
+ \begin{pmatrix}1\\0\\1\\0\\0\\0\\0\\1\end{pmatrix},
+ \qquad
+ C(:,t^{x,+}_{1,1})=
+ \begin{pmatrix}1\\-1\\0\\0\\0\\0\\0\\0\end{pmatrix}.
+\]
+The tXA and complementary cXR self-loops appear in both $\Pre$ and $\Post$
+but cancel in $C$.  Replacing $\txa_1$ with $\txa_2$ gives the column for
+$t^{x,+}_{2,1}$, with exactly the same incidence vector.  The two transitions
+therefore produce the same state change but have different propensities.
+
+More generally, every production/degradation pair for species $y$ has
+incidence
+\[
+ C(:,t_y^+)=e_y-e_{\overline y},\qquad
+ C(:,t_y^-)=e_{\overline y}-e_y,
+\]
+which proves $M(y)+M(\overline y)$ is conserved.
+
+\section{Why a variable is treated as activator or inhibitor}
+
+The classification is not chosen from the instantaneous sign of a simulated
+trajectory.  It comes from the regulatory architecture and the monotonicity
+of the ODE term in the M\"utzel model:
+\begin{itemize}
+  \item If increasing regulator $r$ increases production of $y$, then
+        $\partial P_y/\partial r>0$ and $r$ is an activator.  Here
+        $\partial f(\txa)/\partial\txa_i\geq0$, so each $\txa_i$ activates
+        both $x_1$ and $x_2$.
+  \item If increasing $r$ decreases production of $y$, then
+        $\partial P_y/\partial r<0$ and $r$ is an inhibitor.  Here
+        $F_{\cxr}$ decreases with $\cxr_i$, so $\cxr_i$ inhibits $x_i$.
+        Similarly, $G_{\txa}$ and $G_{\cxr}$ decrease with $x_i$, so Xist
+        inhibits production of its local tXA and cXR.
+  \item Cis/trans scope is determined biologically: $\cxr_i$ regulates only
+        $x_i$, whereas the shared tXA term contains $\txa_1+\txa_2$ and acts
+        on both Xist alleles.
+\end{itemize}
+
+The product $F_{\cxr}F_{\txa}$ in Eq.~\eqref{eq:xist} is a synergistic
+combination: Xist production is large only when trans activation is strong
+and cis repression is weak.  The SPN keeps this product in its propensity;
+ordinary arcs alone do not encode it.
+
+\section{Stochastic semantics and relation to the ODE}
+
+At marking $M$, the implemented rate is
+\[
+ \widetilde a_t(M)=
+ \ind\!\left\{M\geq\Pre(:,t)\right\}a_t(M).
+\]
+If optional guards are used, an additional factor $g_t(M)\in\{0,1\}$ is
+multiplied into this expression.  The current cXR--tXA model uses Hill
+propensities and structural enabling; its threshold guards are commented out.
+
+Let $a_0(M)=\sum_t\widetilde a_t(M)$.  Gillespie's direct method samples
+\[
+ \tau=-\frac{\log U_1}{a_0(M)},\qquad U_1\sim\mathcal U(0,1),
+\]
+and selects transition $t$ with probability
+\[
+ \Pr(t\text{ fires next}\mid M)=\frac{\widetilde a_t(M)}{a_0(M)}.
+\]
+The expected infinitesimal drift is
+\[
+ \frac{d}{dt}\mathbb E[M\mid M(t)=M]
+   =\sum_{t\in T}C(:,t)\widetilde a_t(M).
+\]
+Away from capacity boundaries, the two split Xist-production transitions have
+the same incidence and their rates sum to $A_i(M)$.  Their contribution to the
+$x_i$ drift is therefore exactly the positive term of
+Eq.~\eqref{eq:xist}; degradation contributes $-0.1733m_{x_i}$.  The same
+argument recovers Eqs.~\eqref{eq:txa} and \eqref{eq:cxr}.  Thus the SPN is a
+discrete stochastic realization of the ODE reaction channels, with additional
+finite-capacity enabling imposed by the complementary places.
+
+\section{Modelling assumptions and points of interpretation}
+
+\begin{enumerate}
+  \item Tokens represent discrete molecular units on the scales
+        $p_{21}$, $p_{22}$, and $p_{23}$.
+  \item Hill functions are evaluated on positive-place markings, using the
+        scaled thresholds of the M\"utzel stochastic model.
+  \item Regulatory self-loops do not change a regulator, but they do impose a
+        one-token enabling condition.  If regulation should remain defined at
+        zero without structural disabling, a separate functional/read-arc
+        relation is more appropriate.
+  \item The two Xist-production channels are mutually alternative events.
+        Splitting their rate proportionally to tXA abundance preserves the
+        total rate and avoids an AND requirement that both tXA places be
+        nonempty.
+  \item The SPN contains the production and degradation channels of the six
+        core variables.  The additional silencing-intermediate reactions used
+        in the full stochastic simulations of M\"utzel et al.\ are outside
+        the current implementation and are therefore not included here.
+\end{enumerate}
+
+\section{Summary}
+
+The translation follows a systematic rule: decompose every ODE into
+nonnegative production and degradation terms, create one stochastic event per
+term, encode the actual state change with complementary-place token transfer,
+and retain nonlinear regulation in the marking-dependent propensity.
+Activators use their positive places as regulatory inputs, whereas inhibitors
+use their complementary places.  In the present 14-transition model, each
+Xist-production term is split according to the relative amounts of
+$\txa_1$ and $\txa_2$; the split identifies the source contribution while
+preserving exactly the total Xist-production rate of the M\"utzel equations.
+
+\begin{thebibliography}{9}
+\bibitem{mutzel2019}
+V.~M\"utzel, I.~Okamoto, I.~Dunkel, M.~Saitou, L.~Giorgetti, E.~Heard,
+and E.~G.~Schulz,
+``A symmetric toggle switch explains the onset of random X inactivation in
+different mammals,'' \emph{Nature Structural \& Molecular Biology},
+vol.~26, pp.~350--360, 2019.
+\href{https://doi.org/10.1038/s41594-019-0214-1}
+{doi:10.1038/s41594-019-0214-1}.
+
+\bibitem{mutzel2019supp}
+V.~M\"utzel et al., ``Supplementary Notes: Model Description,'' Supplementary
+Information to \emph{A symmetric toggle switch explains the onset of random
+X inactivation in different mammals}, 2019, Supplementary Note~2: The
+cXR--tXA model.
+\href{https://pure.mpg.de/rest/items/item_3158407_1/component/file_3158409/content}
+{Supplementary information}.
+\end{thebibliography}
+
+\end{document}

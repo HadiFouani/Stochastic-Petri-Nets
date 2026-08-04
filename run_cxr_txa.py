@@ -7,13 +7,14 @@ if __name__ == "__main__":
     net = build_cxr_txa_net()
     m0 = initial_marking(net)
 
-    simulator = Simulator(net,seed=8)
+    simulator = Simulator(net, seed=7)
 
     result = simulator.run(
         initial_marking=m0,
-        t_max=300.0,
-        max_steps=500000,
+        t_max=400.0,
+        max_steps=500_000,
         record_every_step=True,
+        show_current_transition=True,
     )
 
     print("Places:")
